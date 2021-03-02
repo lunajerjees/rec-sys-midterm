@@ -34,7 +34,7 @@ def from_file_to_dict(path, datafile, itemfile):
     # Get movie titles, place into movies dictionary indexed by itemID
     movies = {}
     try:
-        with open(path + '/' + itemfile) as myfile:
+        with open(path + '/' + itemfile, encoding='iso8859') as myfile:
             # this encoding is required for some datasets: encoding='iso8859'
             for line in myfile:
                 (id, title) = line.split('|')[0:2]
@@ -268,14 +268,6 @@ def sim_distance(prefs, person1, person2):
     sum_of_squares = sum([pow(prefs[person1][item]-prefs[person2][item], 2)
                           for item in prefs[person1] if item in prefs[person2]])
 
-    sum_of_squares = 0
-    for item in prefs[person1]:
-        if item in prefs[person2]:
-            # print(item, prefs[person1][item], prefs[person2][item])
-            sq = pow(prefs[person1][item]-prefs[person2][item], 2)
-            # print (sq)
-            sum_of_squares += sq
-
     return 1/(1+sqrt(sum_of_squares))
 
 
@@ -481,7 +473,7 @@ def topMatches(prefs, person, similarity=sim_pearson, n=5):
         -- n: number of matches to find/return (5 is default)
 
         Returns:
-        -- A list of similar matches with 0 or more tuples, 
+        -- A list of similar matches with 0 or more tuples,
            each tuple contains (similarity, item name).
            List is sorted, high to low, by similarity.
            An empty list is returned when no matches have been calc'd.
@@ -496,13 +488,13 @@ def topMatches(prefs, person, similarity=sim_pearson, n=5):
 
 def transformPrefs(prefs):
     '''
-        Transposes U-I matrix (prefs dictionary) 
+        Transposes U-I matrix (prefs dictionary)
 
         Parameters:
         -- prefs: dictionary containing user-item matrix
 
         Returns:
-        -- A transposed U-I matrix, i.e., if prefs was a U-I matrix, 
+        -- A transposed U-I matrix, i.e., if prefs was a U-I matrix,
            this function returns an I-U matrix
 
     '''
@@ -515,16 +507,15 @@ def transformPrefs(prefs):
     return result
 
 
-def calculateSimilarItems(prefs, similarity=sim_pearson, n=10):
+def calculateSimilarItems(prefs, n=100, similarity=sim_pearson):
     '''
-        Creates a dictionary of items showing which other items they are most 
-        similar to. 
+        Creates a dictionary of items showing which other items they are most
+        similar to.
 
         Parameters:
         -- prefs: dictionary containing user-item matrix
-        -- similarity: function to calc similarity (sim_pearson is default)
         -- n: number of similar matches for topMatches() to return
-
+        -- similarity: function to calc similarity (sim_pearson is default)
 
         Returns:
         -- A dictionary with a similarity matrix
@@ -538,7 +529,7 @@ def calculateSimilarItems(prefs, similarity=sim_pearson, n=10):
       # Status updates for larger datasets
         c += 1
         if c % 100 == 0:
-            print("%d / %d") % (c, len(itemPrefs))
+            print("%d / %d" % (c, len(itemPrefs)))
 
         # Find the most similar items to this one
         scores = topMatches(itemPrefs, item, similarity, n=n)
@@ -546,9 +537,38 @@ def calculateSimilarItems(prefs, similarity=sim_pearson, n=10):
     return result
 
 
+def calculateSimilarUsers(prefs, n=100, similarity=sim_pearson):
+    '''
+        Creates a dictionary of items showing which other items they are most
+        similar to.
+
+        Parameters:
+        -- prefs: dictionary containing user-item matrix
+        -- n: number of similar matches for topMatches() to return
+        -- similarity: function to calc similarity (sim_pearson is default)
+
+        Returns:
+        -- A dictionary with a similarity matrix
+
+    '''
+    result = {}
+    c = 0
+    for user in prefs:
+      # Status updates for larger datasets
+        c += 1
+        if c % 100 == 0:
+            percent_complete = (100*c)/len(prefs)
+            print(str(percent_complete)+"% complete")
+
+        # Find the most similar items to this one
+        scores = topMatches(prefs, user, similarity, n=n)
+        result[user] = scores
+    return result
+
+
 def getRecommendedItems(prefs, itemMatch, user):
     '''
-        Calculates recommendations for a given user 
+        Calculates recommendations for a given user
 
         Parameters:
         -- prefs: dictionary containing user-item matrix
@@ -556,7 +576,7 @@ def getRecommendedItems(prefs, itemMatch, user):
         -- user: string containing name of user
 
         Returns:
-        -- A list of recommended items with 0 or more tuples, 
+        -- A list of recommended items with 0 or more tuples,
            each tuple contains (predicted rating, item name).
            List is sorted, high to low, by predicted rating.
            An empty list is returned when no recommendations have been calc'd.
@@ -595,7 +615,7 @@ def getRecommendedItems(prefs, itemMatch, user):
 
 
 def get_all_II_recs(prefs, itemsim, sim_method, num_users=10, top_N=5):
-    ''' 
+    '''
         Print item-based CF recommendations for all users in dataset
 
         Parameters
@@ -605,7 +625,7 @@ def get_all_II_recs(prefs, itemsim, sim_method, num_users=10, top_N=5):
         -- num_users: max number of users to print (integer, default = 10)
         -- top_N: max number of recommendations to print per user (integer, default = 5)
 
-        Returns: 
+        Returns:
         -- None
 
     '''
@@ -690,33 +710,46 @@ def main():
     done = False
     prefs = {}
     itemsim = {}
+    usersim = {}
 
     while not done:
         print()
         # Start a simple dialog
-        file_io = input('R(ead) critics data from file?, '
-                        'P(rint) the U-I matrix?, '
-                        'V(alidate) the dictionary?, '
-                        'S(tats) print?, '
-                        'D(istance) critics data?, '
-                        'PC(earson Correlation) critics data? '
-                        'U(ser-based CF Recommendations)? '
-                        'LCV(eave one out cross-validation)? '
-                        'LCVSIM(eave one out cross-validation)?'
-                        'Sim(ilarity matrix) calc? '
-                        'I(tem-based CF Recommendations)? ')
+        file_io = input('R(ead) critics data from file?, \n'
+                        'RML(ead ml100K data)?, \n'
+                        'P(rint) the U-I matrix?, \n'
+                        'V(alidate) the dictionary?, \n'
+                        'S(tats) print?, \n'
+                        'D(istance) critics data?, \n'
+                        'PC(earson Correlation) critics data? \n'
+                        'U(ser-based CF Recommendations)? \n'
+                        'LCV(eave one out cross-validation)? \n'
+                        'LCVSIM(eave one out cross-validation)? \n'
+                        'Sim(ilarity matrix) calc? \n'
+                        'Simu(user-user sim matrix)? \n'
+                        'I(tem-based CF Recommendations)? \n')
 
         if file_io == 'R' or file_io == 'r':
             # read in u-i matrix data
             print()
-            file_dir = 'data/'
-            datafile = 'critics_ratings.data'
-            itemfile = 'critics_movies.item'
+            file_dir='data/'
+            datafile='critics_ratings.data'
+            itemfile='critics_movies.item'
             print('Reading "%s" dictionary from file' % datafile)
-            prefs = from_file_to_dict(
+            prefs=from_file_to_dict(
                 path, file_dir+datafile, file_dir+itemfile)
             print('Number of users: %d\nList of users:' % len(prefs),
                   list(prefs.keys()))
+
+        elif file_io == 'RML' or file_io == 'rml':
+            print()
+            file_dir = 'data/ml-100k/' # path from current directory
+            datafile = 'u.data'  # ratings file
+            itemfile = 'u.item'  # movie titles file            
+            print ('Reading "%s" dictionary from file' % datafile)
+            prefs = from_file_to_dict(path, file_dir+datafile, file_dir+itemfile)
+            print('Number of users: %d\nList of users [0:10]:' 
+                  % len(prefs), list(prefs.keys())[0:10] )
 
         elif file_io == 'P' or file_io == 'p':
             # print the u-i matrix
@@ -822,35 +855,40 @@ def main():
             print()
             if len(prefs) > 0 and itemsim != {}:
                 print('LOO_CV_SIM Evaluation')
-                if len(prefs) == 7:
+                
+                # check for small or large dataset (for print statements)
+                if len(prefs) <= 7:
                     prefs_name = 'critics'
-
-                metric = input('Enter error metric: MSE, MAE, RMSE: ')
-                if metric == 'MSE' or metric == 'MAE' or metric == 'RMSE' or \
-                        metric == 'mse' or metric == 'mae' or metric == 'rmse':
-                    metric = metric.upper()
                 else:
-                    metric = 'MSE'
-                algo = getRecommendedItems  # Item-based recommendation
+                    prefs_name = 'MLK-100k'
+
+                algo = input('Enter algorithm: U(ser-based) or I(tem-based)')
+                if algo == 'I' or algo =='i':
+                    algo = getRecommendedItems
+                else:
+                    algo = getRecommendationsSim
+
 
                 if sim_method == 'sim_pearson':
                     sim = sim_pearson
                     error_total, error_list = loo_cv_sim(
-                        prefs, metric, sim, algo, itemsim)
+                        prefs, sim, algo, itemsim)
                     print('%s for %s: %.5f, len(SE list): %d, using %s'
-                          % (metric, prefs_name, error_total, len(error_list), sim))
+                          % (prefs_name, error_total, len(error_list), sim))
                     print()
                 elif sim_method == 'sim_distance':
                     sim = sim_distance
                     error_total, error_list = loo_cv_sim(
-                        prefs, metric, sim, algo, itemsim)
+                        prefs, sim, algo, itemsim)
                     print('%s for %s: %.5f, len(SE list): %d, using %s'
-                          % (metric, prefs_name, error_total, len(error_list), sim))
+                          % (prefs_name, error_total, len(error_list), sim))
                     print()
                 else:
                     print('Run Sim(ilarity matrix) command to create/load Sim matrix!')
+                
                 if prefs_name == 'critics':
                     print(error_list)
+
             else:
                 print('Empty dictionary, run R(ead) OR Empty Sim Matrix, run Sim!')
 
@@ -902,7 +940,7 @@ def main():
                           ' Enter Sim(ilarity matrix) again and choose a Write command')
                     print()
 
-                if len(itemsim) > 0 and ready == True:
+                if len(itemsim) > 0 and ready == True and len(itemsim) <= 10:
                     # Only want to print if sub command completed successfully
                     print('Similarity matrix based on %s, len = %d'
                           % (sim_method, len(itemsim)))
@@ -919,6 +957,67 @@ def main():
                     # Lady in the Water is most similar to Snake on a Plane (0.76)
                     # Superman Returns is least similar to Snakes on a Plane (0.11)
                     # Lady in the Water is the most inversely similar to Just My Luck (-0.94)
+
+            else:
+                print('Empty dictionary, R(ead) in some data!')
+            
+        elif file_io == 'Simu' or file_io == 'simu':
+            print()
+            if len(prefs) > 0:
+                ready = False  # subc command in progress
+                sub_cmd = input(
+                    'RD(ead) distance or RP(ead) pearson or WD(rite) distance or WP(rite) pearson? ')
+                try:
+                    if sub_cmd == 'RD' or sub_cmd == 'rd':
+                        # Load the dictionary back from the pickle file.
+                        usersim = pickle.load(
+                            open("save_usersim_distance.p", "rb"))
+                        sim_method = 'sim_distance'
+
+                    elif sub_cmd == 'RP' or sub_cmd == 'rp':
+                        # Load the dictionary back from the pickle file.
+                        usersim = pickle.load(
+                            open("save_usersim_pearson.p", "rb"))
+                        sim_method = 'sim_pearson'
+
+                    elif sub_cmd == 'WD' or sub_cmd == 'wd':
+                        # transpose the U-I matrix and calc user-user similarities matrix
+                        usersim = calculateSimilarUsers(
+                            prefs, similarity=sim_distance)
+                        # Dump/save dictionary to a pickle file
+                        pickle.dump(usersim, open(
+                            "save_usersim_distance.p", "wb"))
+                        sim_method = 'sim_distance'
+
+                    elif sub_cmd == 'WP' or sub_cmd == 'wp':
+                        # transpose the U-I matrix and calc user-user similarities matrix
+                        usersim = calculateSimilarUsers(
+                            prefs, similarity=sim_pearson)
+                        # Dump/save dictionary to a pickle file
+                        pickle.dump(usersim, open(
+                            "save_usersim_pearson.p", "wb"))
+                        sim_method = 'sim_pearson'
+
+                    else:
+                        print("Sim sub-command %s is invalid, try again" % sub_cmd)
+                        continue
+
+                    ready = True  # sub command completed successfully
+
+                except Exception as ex:
+                    print('Error!!', ex, '\nNeed to W(rite) a file before you can R(ead) it!'
+                          ' Enter Simu(ilarity matrix) again and choose a Write command')
+                    print()
+
+                if len(usersim) > 0 and ready == True and len(usersim) <= 10:
+                    # Only want to print if sub command completed successfully
+                    print('Similarity matrix based on %s, len = %d'
+                          % (sim_method, len(usersim)))
+                    print()
+
+                    for item in usersim:
+                        print('{} : {}'.format(item, usersim[item]))
+
 
             else:
                 print('Empty dictionary, R(ead) in some data!')
